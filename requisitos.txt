@@ -1,0 +1,134 @@
+
+# Análise de Requisitos – Expansão de Funcionalidades para Rede P2P
+
+## 1. **Broadcast de Mensagem**
+
+**RF1 – Envio de Mensagem para Todos os Nós**
+
+* O sistema deve permitir que um nó envie uma mensagem para todos os peers conhecidos.
+* A mensagem deve ser identificável por um ID único para evitar loops.
+* Cada nó deve propagar a mensagem para seus peers, respeitando regras de loop prevention.
+
+**RF2 – Propagação Controlada**
+
+* Deve ser possível limitar a propagação (TTL ou hops).
+* O nó deve registrar mensagens já recebidas para não retransmitir.
+
+**RNF1 – Desempenho**
+
+* A propagação deve ser eficiente para não sobrecarregar a rede.
+* O sistema deve lidar com centenas de peers sem perda de mensagens.
+
+**Segurança**
+
+* Mensagens devem ser assinadas digitalmente.
+* Nós devem validar a assinatura antes de processar ou retransmitir.
+
+**Prioridade:** Alta
+
+---
+
+## 2. **Envio Direto (Send)**
+
+**RF3 – Envio Ponto-a-Ponto**
+
+* O nó deve conseguir enviar uma mensagem diretamente para outro nó identificado pelo Node ID.
+* Deve garantir entrega confiável e segura da mensagem.
+
+**RF4 – Confirmação de Recebimento**
+
+* O nó receptor deve enviar uma confirmação (ack) ao emissor.
+* Caso não haja confirmação, o emissor deve tentar reenviar.
+
+**RNF2 – Confiabilidade**
+
+* Deve garantir que a mensagem não seja perdida, mesmo com falhas temporárias de rede.
+* Sistema deve suportar retransmissão automática.
+
+**Segurança**
+
+* Mensagens devem ser criptografadas usando TLS/RSA.
+* Apenas o nó destino deve conseguir descriptografar a mensagem.
+
+**Prioridade:** Alta
+
+---
+
+## 3. **Recepção de Mensagens (Handler)**
+
+**RF5 – Classificação de Mensagens**
+
+* O handler deve diferenciar mensagens de broadcast e mensagens diretas.
+* Deve acionar callbacks ou funções específicas para cada tipo de mensagem.
+
+**RF6 – Validação e Integridade**
+
+* Todas as mensagens recebidas devem ser validadas por assinatura digital.
+* Mensagens inválidas ou duplicadas devem ser descartadas.
+
+**RNF3 – Performance**
+
+* O handler deve processar mensagens em tempo real, sem bloqueios prolongados.
+
+**Segurança**
+
+* Rejeitar mensagens de nós não confiáveis ou desconhecidos.
+* Manter registro de mensagens processadas para evitar replay attacks.
+
+**Prioridade:** Alta
+
+---
+
+## 4. **Peer List Dinâmica**
+
+**RF7 – Atualização Automática de Peers**
+
+* O nó deve atualizar a lista de peers conhecidos periodicamente.
+* Deve receber peer lists de outros nós e mesclá-las à sua própria lista.
+
+**RF8 – Remoção de Peers Inativos**
+
+* Peers que não responderem em um período definido devem ser removidos da lista.
+
+**RNF4 – Consistência**
+
+* A lista de peers deve refletir com precisão os nós ativos na rede.
+
+**Segurança**
+
+* Apenas peers com certificados válidos devem ser adicionados à lista.
+
+**Prioridade:** Média
+
+---
+
+## 5. **Segurança e Identidade**
+
+**RF9 – Verificação de Identidade**
+
+* Cada nó deve ter um Node ID derivado de suas chaves RSA.
+* Mensagens devem ser verificadas para garantir que vêm de um nó legítimo.
+
+**RF10 – Bloqueio de Nós Suspeitos**
+
+* Sistema deve permitir blacklist ou restrição de nós que enviem mensagens maliciosas.
+
+**RNF5 – Confidencialidade**
+
+* Todas as comunicações P2P devem ser criptografadas via TLS/RSA.
+* Evitar exposição de dados sensíveis durante o envio ou broadcast.
+
+**Prioridade:** Alta
+
+---
+
+## 6. **Resumo da Prioridade dos Requisitos**
+
+| Funcionalidade | Requisitos Críticos | Prioridade |
+| -------------- | ------------------- | ---------- |
+| Broadcast      | RF1, RF2, RNF1      | Alta       |
+| Send           | RF3, RF4, RNF2      | Alta       |
+| Handler        | RF5, RF6, RNF3      | Alta       |
+| Peer List      | RF7, RF8, RNF4      | Média      |
+| Segurança      | RF9, RF10, RNF5     | Alta       |
+

@@ -19,6 +19,7 @@ operações da rede, incluindo:
 import asyncio
 import logging
 import os
+import json # Adiciona importação do módulo json
 from pathlib import Path # Importar Path para manipulação de caminhos
 from cryptography.hazmat.primitives.hashes import SHA256
 from protocol.message import (
@@ -34,7 +35,7 @@ from protocol.message import (
 )
 from protocol.factory import MessageHandlerFactory
 from bootstrap.client import BootstrapClient
-from crypto.keys import generate_rsa_key_pair, public_key_to_node_id, sign_data, verify_signature
+from crypto.keys import get_or_generate_key_pair, public_key_to_node_id, sign_data, verify_signature
 from crypto.tls_utils import generate_self_signed_cert, create_ssl_context
 from storage.app_storage import AppStorage
 from storage.app_index import AppIndex
@@ -58,45 +59,38 @@ class Node:
             bootstrap_nodes (list): Uma lista de tuplas (host, porta) para nós de bootstrap iniciais.
             web_port (int): A porta para o servidor web local.
         """
-        # Identidade do Nó
-        self.private_key, self.public_key = generate_rsa_key_pair()
-        self.node_id = public_key_to_node_id(self.public_key)
-        
         self.host = host
-        self.port = port
+        self.port = port # A porta pode ser 0 inicialmente, será atualizada após o server.serve_forever()
         self.web_port = web_port
         
         self.peers = {} # Armazena {node_id: (reader, writer, peer_public_key_pem)}
         self.server = None # Servidor P2P asyncio
         self.cli = cli # Referência para a interface CLI
         
-        # Clientes de Bootstrap para descoberta inicial de peers
+        # Clientes de Bootstrap para descoberta inicial de peers (inicializado após a identidade)
         self.bootstrap_nodes = bootstrap_nodes if bootstrap_nodes is not None else []
-        self.bootstrap_client = BootstrapClient(self, self.bootstrap_nodes)
+        self.bootstrap_client = None
 
-        # Configuração TLS para comunicação P2P criptografada
-        self.cert_dir = Path.cwd() / ".certs" # Diretório para armazenar chaves e certificados TLS
-        self.tls_key_path, self.tls_cert_path = generate_self_signed_cert(
-            self.cert_dir, self.node_id, self._get_private_key_pem()
-        )
-        # Contexto SSL para o servidor P2P (escuta conexões)
-        self.ssl_server_context = create_ssl_context(
-            self.tls_cert_path, self.tls_key_path, is_server=True, peer_certs_dir=self.cert_dir
-        )
-        # Contexto SSL para o cliente P2P (inicia conexões)
-        self.ssl_client_context = create_ssl_context(
-            self.tls_cert_path, self.tls_key_path, is_server=False, peer_certs_dir=self.cert_dir
-        )
-        
         # Gerenciamento de Aplicações Distribuídas
         self.app_storage = AppStorage() # Gerencia o armazenamento local de arquivos de aplicações
-        self.app_index = AppIndex(Path.cwd() / ".index") # Índice de metadados de aplicações
         self.app_processor = AppProcessor() # Utilitários para compactar/descompactar/hashear apps
 
         # Sincronização de Downloads de Aplicações
         self.app_download_events = {} # Armazena asyncio.Event para sincronização de downloads de apps
 
-        logging.info(f"Node {self.node_id} inicializado em {self.host}:{self.port} (Web: {self.web_port}) com novo par de chaves RSA e certificados TLS. Componentes de aplicação inicializados.")
+        # Variáveis de identidade do nó e TLS (inicializadas em _initialize_identity)
+        self.node_id = None
+        self.private_key = None
+        self.public_key = None
+        self.node_data_dir = None
+        self.cert_dir = None
+        self.tls_key_path = None
+        self.tls_cert_path = None
+        self.ssl_server_context = None
+        self.ssl_client_context = None
+        self.app_index = None # Inicializado em _initialize_identity
+
+        logging.info(f"Node inicializado em {self.host}:{self.port} (Web: {self.web_port}). A identidade do nó será inicializada após a porta ser definida.")
 
         # Inicializa o servidor web local, passando a si mesmo (o nó)
         self.web_server = WebServer(host=self.host, port=self.web_port, node_instance=self)
@@ -114,6 +108,47 @@ class Node:
         Esta chave é usada para assinar dados e desafios criptográficos.
         """
         return self.private_key
+
+    async def _initialize_identity(self):
+        """
+        Inicializa a identidade criptográfica do nó, incluindo chaves RSA e certificados TLS,
+        após a porta P2P real ter sido atribuída.
+        """
+        # Define o diretório de dados persistente para este nó, usando um identificador estável.
+        # Se a porta for 0, usa um ID persistente para o diretório de dados do nó.
+        # Isso garante que o nó mantenha sua identidade mesmo se receber uma porta aleatória.
+        # Define o diretório de dados persistente para este nó como o diretório ".node_data" na raiz do projeto.
+        # Todos os nós compartilharão este mesmo diretório para chaves e outros dados persistentes.
+        self.node_data_dir = Path.cwd() / ".node_data"
+        self.node_data_dir.mkdir(parents=True, exist_ok=True) # Garante que o diretório exista.
+
+        
+        # Identidade do Nó: Carrega ou gera o par de chaves RSA
+        self.private_key, self.public_key = get_or_generate_key_pair(self.node_data_dir)
+        self.node_id = public_key_to_node_id(self.public_key)
+        
+        # Configuração TLS para comunicação P2P criptografada
+        # O diretório de certificados agora é um subdiretório do node_data_dir
+        self.cert_dir = self.node_data_dir / "certs" 
+        self.tls_key_path, self.tls_cert_path = generate_self_signed_cert(
+            self.cert_dir, self.node_id, self._get_private_key_pem(), self.host
+        )
+        # Contexto SSL para o servidor P2P (escuta conexões)
+        self.ssl_server_context = create_ssl_context(
+            self.tls_cert_path, self.tls_key_path, is_server=True, peer_certs_dir=self.cert_dir
+        )
+        # Contexto SSL para o cliente P2P (inicia conexões)
+        self.ssl_client_context = create_ssl_context(
+            self.tls_cert_path, self.tls_key_path, is_server=False, peer_certs_dir=self.cert_dir
+        )
+        
+        # Inicializa o índice de metadados de aplicações, usando o diretório de dados do nó
+        self.app_index = AppIndex(self.node_data_dir / ".index")
+
+        # Inicializa o BootstrapClient agora que a identidade do nó está definida
+        self.bootstrap_client = BootstrapClient(self, self.bootstrap_nodes)
+
+        logging.info(f"Node {self.node_id} identidade inicializada em {self.host}:{self.port} (Web: {self.web_port}) com chaves RSA e certificados TLS persistentes. Componentes de aplicação inicializados.")
         
     async def _send_protocol_message(self, writer: asyncio.StreamWriter, message: Message):
         """
@@ -134,13 +169,14 @@ class Node:
             logging.error(f"[{self.node_id}] Erro ao enviar mensagem de protocolo para {peer_address}: {e}")
             raise # Re-lança para ser capturado e tratado no nível superior (e.g., fechamento da conexão)
     
-    async def _receive_protocol_message(self, reader: asyncio.StreamReader) -> Message:
+    async def _receive_protocol_message(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> Message:
         """
         Recebe e decodifica uma única mensagem de protocolo de um StreamReader específico.
         Utilizado para mensagens de handshake e de controle interno da rede.
 
         Args:
             reader (asyncio.StreamReader): O leitor da conexão do peer.
+            writer (asyncio.StreamWriter): O escritor da conexão do peer.
 
         Returns:
             Message: Um objeto Message construído a partir dos dados recebidos.
@@ -155,7 +191,7 @@ class Node:
             data = await reader.readuntil(b'\n')
             message_str = data.decode().strip()
             message = Message.from_json(message_str)
-            peer_address = reader.get_extra_info('peername')
+            peer_address = writer.get_extra_info('peername')
             logging.debug(f"[{self.node_id}] Recebido {message.type} de {peer_address}")
             return message
         except asyncio.IncompleteReadError:
@@ -173,11 +209,20 @@ class Node:
         Inicia o servidor P2P do nó para escutar conexões de entrada,
         utilizando TLS para criptografia, e também inicia o servidor web local.
         """
+        # Inicia um servidor temporário para descobrir a porta real que será usada.
+        temp_server = await asyncio.start_server(self._handle_new_connection, self.host, self.port)
+        self.host, self.port = temp_server.sockets[0].getsockname()
+        temp_server.close() # Fecha o servidor temporário, pois não será mais necessário.
+        await temp_server.wait_closed() # Garante que o servidor temporário foi completamente fechado.
+
+        # Agora que a porta real é conhecida, inicializa a identidade do nó e os contextos SSL.
+        # Isso garante que as chaves e certificados TLS sejam gerados/carregados para a porta correta.
+        await self._initialize_identity()
+
+        # Inicia o servidor P2P principal, agora com o contexto SSL corretamente configurado.
         self.server = await asyncio.start_server(
             self._handle_new_connection, self.host, self.port, ssl=self.ssl_server_context
         )
-        # Obtém a porta real se 0 foi passado (para saber qual porta o SO alocou)
-        self.host, self.port = self.server.sockets[0].getsockname()
         logging.info(f"Node {self.node_id} escutando (com TLS) em {self.host}:{self.port}")
 
         # Inicia a descoberta de bootstrap após o servidor P2P estar pronto
@@ -205,13 +250,14 @@ class Node:
         Returns:
             bool: True se o handshake for bem-sucedido, False caso contrário.
         """
+        peer_node_id = None # Inicializa peer_node_id para garantir que esteja sempre associado a um valor
         peer_address = writer.get_extra_info('peername')
         peer_host, peer_port = peer_address[0], peer_address[1]
         logging.info(f"[{self.node_id}] Tentando handshake seguro com {peer_host}:{peer_port} (conexão de entrada).")
 
         try:
             # 1. Receber PUBLIC_KEY_EXCHANGE do peer
-            pk_exchange_msg = await self._receive_protocol_message(reader)
+            pk_exchange_msg = await self._receive_protocol_message(reader, writer)
             if pk_exchange_msg.type != MESSAGE_TYPE_PUBLIC_KEY_EXCHANGE:
                 logging.warning(f"[{self.node_id}] Recebido tipo de mensagem inesperado '{pk_exchange_msg.type}' de {peer_address} durante o handshake. Esperava PUBLIC_KEY_EXCHANGE.")
                 return False
@@ -242,7 +288,7 @@ class Node:
             logging.debug(f"[{self.node_id}] Enviado CHALLENGE para {peer_node_id} ({peer_address}).")
 
             # 3. Receber CHALLENGE_RESPONSE do peer
-            challenge_response_msg = await self._receive_protocol_message(reader)
+            challenge_response_msg = await self._receive_protocol_message(reader, writer)
             if challenge_response_msg.type != MESSAGE_TYPE_CHALLENGE_RESPONSE:
                 logging.warning(f"[{self.node_id}] Recebido tipo de mensagem inesperado '{challenge_response_msg.type}' de {peer_address}. Esperava CHALLENGE_RESPONSE.")
                 return False
@@ -318,7 +364,7 @@ class Node:
             logging.debug(f"[{self.node_id}] Enviado PUBLIC_KEY_EXCHANGE para {peer_host}:{peer_port}.")
 
             # 2. Receber CHALLENGE do peer
-            challenge_msg = await self._receive_protocol_message(reader)
+            challenge_msg = await self._receive_protocol_message(reader, writer)
             if challenge_msg.type != MESSAGE_TYPE_CHALLENGE:
                 logging.warning(f"[{self.node_id}] Recebido tipo de mensagem inesperado '{challenge_msg.type}' de {peer_host}:{peer_port}. Esperava CHALLENGE.")
                 return False
@@ -393,31 +439,22 @@ class Node:
         """
         try:
             while True:
-                data = await reader.read(1024) # Lê dados da conexão (tamanho fixo ou use readuntil para delimitação)
-                if not data: # Conexão fechada pelo peer
-                    break
+                # Use _receive_protocol_message para ler mensagens completas
+                message = await self._receive_protocol_message(reader, writer)
+                logging.info(f"[{self.node_id}] Recebido {message.type} message de {peer_node_id}")
                 
-                message_str = data.decode().strip()
-                try:
-                    message = Message.from_json(message_str)
-                    logging.info(f"[{self.node_id}] Recebido {message.type} message de {peer_node_id}")
-                    
-                    # Despacha a mensagem para o manipulador apropriado
-                    handler = MessageHandlerFactory.get_handler(message.type)
-                    await handler.handle_message(self, message, writer)
+                # Despacha a mensagem para o manipulador apropriado
+                handler = MessageHandlerFactory.get_handler(message.type)
+                await handler.handle_message(self, message, writer)
 
-                except (ValueError, json.JSONDecodeError) as ve:
-                    logging.warning(f"[{self.node_id}] Mensagem inválida ou tipo desconhecido de {peer_node_id}: {ve}")
-                except Exception as e:
-                    logging.error(f"[{self.node_id}] Erro ao processar mensagem de {peer_node_id}: {e} - Dados brutos: {message_str[:100]}...")
-
+        except asyncio.IncompleteReadError:
+            logging.info(f"[{self.node_id}] Peer {peer_node_id} desconectado (conexão fechada).")
         except Exception as e:
             logging.error(f"[{self.node_id}] Erro ao escutar peer {peer_node_id}: {e}")
         finally:
             logging.info(f"[{self.node_id}] Peer {peer_node_id} desconectado.")
             if peer_node_id in self.peers:
                 del self.peers[peer_node_id]
-            # Sempre tenta fechar o escritor associado a esta tarefa de escuta
             writer.close()
             await writer.wait_closed()
 

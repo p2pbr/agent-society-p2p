@@ -1,0 +1,55 @@
+execucao terminal 1:
+
+(venv) C:\Users\Jaime Paiva\agent-society-p2p\src>python main.py
+2026-02-14 04:12:32,165 - INFO - Diretório base de armazenamento de aplicações: C:\Users\Jaime Paiva\agent-society-p2p\src\apps
+2026-02-14 04:12:32,166 - INFO - AppProcessor inicializado.
+2026-02-14 04:12:32,166 - INFO - Node inicializado em 127.0.0.1:0 (Web: 8080). A identidade do nó será inicializada após a porta ser definida.
+2026-02-14 04:12:32,167 - INFO - WebServer inicializado em http://127.0.0.1:8080
+2026-02-14 04:12:32,167 - INFO - CLI initialized.
+2026-02-14 04:12:32,168 - INFO - CLI started. Type 'exit' to quit.
+> 2026-02-14 04:12:32,173 - INFO - Tentando carregar chaves RSA de C:\Users\Jaime Paiva\agent-society-p2p\src\.node_data...
+2026-02-14 04:12:32,174 - INFO - Chaves RSA carregadas com sucesso.
+2026-02-14 04:12:32,221 - INFO - Arquivo de índice não encontrado. Iniciando com índice vazio.
+2026-02-14 04:12:32,221 - INFO - AppIndex inicializado. Carregado de: C:\Users\Jaime Paiva\agent-society-p2p\src\.node_data\.index\index.json com 0 entradas.
+2026-02-14 04:12:32,222 - INFO - BootstrapClient initialized with 0 bootstrap nodes.
+2026-02-14 04:12:32,222 - INFO - Node e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a identidade inicializada em 127.0.0.1:60460 (Web: 8080) com chaves RSA e certificados TLS persistentes. Componentes de aplicação inicializados.
+2026-02-14 04:12:32,223 - INFO - Node e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a escutando (com TLS) em 127.0.0.1:60460
+2026-02-14 04:12:32,224 - WARNING - No bootstrap nodes configured. Starting network without initial connections.
+2026-02-14 04:12:32,224 - INFO - WebServer escutando em http://127.0.0.1:8080
+NODE_P2P_PORT:60460
+NODE_WEB_PORT:8080
+2026-02-14 04:14:56,806 - INFO - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Tentando handshake seguro com 127.0.0.1:60468 (conexão de entrada).
+2026-02-14 04:14:56,885 - INFO - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Handshake seguro COMPLETO com e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a (('127.0.0.1', 60468)).
+2026-02-14 04:15:02,282 - INFO - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Enviando peer_list para 1 peers.
+2026-02-14 04:15:02,287 - INFO - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Enviado peer_list para e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a
+2026-02-14 04:15:02,299 - WARNING - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Conexão fechada pelo peer durante leitura de mensagem de protocolo.
+2026-02-14 04:15:02,300 - INFO - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Peer e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a desconectado (conexão fechada).
+2026-02-14 04:15:02,301 - INFO - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Peer e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a desconectado.
+
+execuçao terminal 2:
+
+(venv) C:\Users\Jaime Paiva\agent-society-p2p\src>python main.py --web-port 8081 --bootstrap 127.0.0.1:60460
+2026-02-14 04:14:56,713 - INFO - Diretório base de armazenamento de aplicações: C:\Users\Jaime Paiva\agent-society-p2p\src\apps
+2026-02-14 04:14:56,713 - INFO - AppProcessor inicializado.
+2026-02-14 04:14:56,714 - INFO - Node inicializado em 127.0.0.1:0 (Web: 8081). A identidade do nó será inicializada após a porta ser definida.
+2026-02-14 04:14:56,714 - INFO - WebServer inicializado em http://127.0.0.1:8081
+2026-02-14 04:14:56,715 - INFO - CLI initialized.
+2026-02-14 04:14:56,715 - INFO - CLI started. Type 'exit' to quit.
+> 2026-02-14 04:14:56,721 - INFO - Tentando carregar chaves RSA de C:\Users\Jaime Paiva\agent-society-p2p\src\.node_data...
+2026-02-14 04:14:56,722 - INFO - Chaves RSA carregadas com sucesso.
+2026-02-14 04:14:56,749 - INFO - Arquivo de índice não encontrado. Iniciando com índice vazio.
+2026-02-14 04:14:56,749 - INFO - AppIndex inicializado. Carregado de: C:\Users\Jaime Paiva\agent-society-p2p\src\.node_data\.index\index.json com 0 entradas.
+2026-02-14 04:14:56,749 - INFO - BootstrapClient initialized with 1 bootstrap nodes.
+2026-02-14 04:14:56,750 - INFO - Node e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a identidade inicializada em 127.0.0.1:60467 (Web: 8081) com chaves RSA e certificados TLS persistentes. Componentes de aplicação inicializados.
+2026-02-14 04:14:56,750 - INFO - Node e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a escutando (com TLS) em 127.0.0.1:60467
+2026-02-14 04:14:56,751 - INFO - Attempting to connect to bootstrap nodes...
+2026-02-14 04:14:56,806 - INFO - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Tentando handshake seguro (com TLS) com 127.0.0.1:60460 (conexão de saída).
+2026-02-14 04:14:56,884 - INFO - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Handshake seguro COMPLETO com e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a (127.0.0.1:60460).
+2026-02-14 04:14:56,885 - INFO - Successfully connected to bootstrap node 127.0.0.1:60460
+2026-02-14 04:14:56,886 - INFO - WebServer escutando em http://127.0.0.1:8081
+NODE_P2P_PORT:60467
+NODE_WEB_PORT:8081
+2026-02-14 04:15:02,287 - INFO - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Recebido peer_list message de e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a
+2026-02-14 04:15:02,289 - INFO - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Recebido peer_list de e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a
+2026-02-14 04:15:02,295 - ERROR - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Erro ao escutar peer e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a: name 'public_key_to_node_id' is not defined
+2026-02-14 04:15:02,297 - INFO - [e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a] Peer e6a1fe8890d0bc080e2a8c880165076020795efa4a4d0bc9640b96d10b81240a desconectado.

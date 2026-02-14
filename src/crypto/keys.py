@@ -4,6 +4,7 @@ Módulo para operações criptográficas de chave RSA, como geração de pares d
 assinatura digital e verificação de assinaturas.
 """
 import os
+import logging
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization
@@ -32,6 +33,61 @@ def generate_rsa_key_pair():
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
     return private_pem, public_pem
+
+def save_key_pair(private_pem: bytes, public_pem: bytes, key_dir: Path):
+    """
+    Salva o par de chaves RSA (privada e pública) para arquivos no diretório especificado.
+    Args:
+        private_pem (bytes): A chave privada no formato PEM.
+        public_pem (bytes): A chave pública no formato PEM.
+        key_dir (Path): O diretório onde os arquivos de chave serão salvos.
+    """
+    key_dir.mkdir(parents=True, exist_ok=True)
+    with open(key_dir / "private_key.pem", "wb") as f:
+        f.write(private_pem)
+    with open(key_dir / "public_key.pem", "wb") as f:
+        f.write(public_pem)
+
+def load_key_pair(key_dir: Path) -> tuple[bytes, bytes]:
+    """
+    Carrega o par de chaves RSA (privada e pública) de arquivos no diretório especificado.
+    Args:
+        key_dir (Path): O diretório de onde os arquivos de chave serão carregados.
+    Returns:
+        tuple: (private_key, public_key) no formato PEM serializado.
+    Raises:
+        FileNotFoundError: Se os arquivos de chave não existirem.
+    """
+    private_key_path = key_dir / "private_key.pem"
+    public_key_path = key_dir / "public_key.pem"
+    if not private_key_path.exists() or not public_key_path.exists():
+        raise FileNotFoundError(f"Chaves não encontradas em {key_dir}")
+    with open(private_key_path, "rb") as f:
+        private_pem = f.read()
+    with open(public_key_path, "rb") as f:
+        public_pem = f.read()
+    return private_pem, public_pem
+
+def get_or_generate_key_pair(key_dir: Path) -> tuple[bytes, bytes]:
+    """
+    Tenta carregar um par de chaves RSA existente do diretório especificado.
+    Se não encontrar as chaves, gera um novo par e as salva.
+    Args:
+        key_dir (Path): O diretório onde as chaves serão procuradas ou salvas.
+    Returns:
+        tuple: (private_key, public_key) no formato PEM serializado.
+    """
+    try:
+        logging.info(f"Tentando carregar chaves RSA de {key_dir}...")
+        private_pem, public_pem = load_key_pair(key_dir)
+        logging.info("Chaves RSA carregadas com sucesso.")
+        return private_pem, public_pem
+    except FileNotFoundError:
+        logging.info(f"Chaves RSA não encontradas em {key_dir}. Gerando novo par de chaves...")
+        private_pem, public_pem = generate_rsa_key_pair()
+        save_key_pair(private_pem, public_pem, key_dir)
+        logging.info(f"Novo par de chaves RSA gerado e salvo em {key_dir}.")
+        return private_pem, public_pem
 
 def sign_data(private_pem: bytes, data: bytes) -> bytes:
     """

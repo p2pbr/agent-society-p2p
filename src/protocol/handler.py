@@ -20,6 +20,7 @@ from protocol.message import Message, MESSAGE_TYPE_HELLO, MESSAGE_TYPE_PEER_LIST
 from models.app_metadata import AppMetadata
 from storage.app_storage import AppStorage
 from storage.app_processor import AppProcessor
+from crypto.keys import public_key_to_node_id # Adicionado importação para public_key_to_node_id
 
 class MessageHandler(ABC):
     """
@@ -74,7 +75,7 @@ class PeerListMessageHandler(MessageHandler):
 
             if peer_id and peer_host and peer_port and peer_public_key:
                 # Verificar se o peer_id corresponde à chave pública fornecida
-                expected_peer_id = node.public_key_to_node_id(peer_public_key.encode())
+                expected_peer_id = public_key_to_node_id(peer_public_key.encode())
                 if expected_peer_id != peer_id:
                     logging.warning(f"[{node.node_id}] Peer na lista {peer_id} com chave pública inconsistente. Ignorando.")
                     continue

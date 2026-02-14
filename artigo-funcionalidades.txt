@@ -1,0 +1,111 @@
+
+# Expansão de Funcionalidades para Rede P2P
+
+## 1. **Broadcast de Mensagem**
+
+**Definição:**
+O broadcast permite que uma mensagem seja enviada **simultaneamente para todos os nós conectados** na rede P2P, sem precisar especificar cada peer manualmente.
+
+**Objetivo:**
+
+* Compartilhar informações globais rapidamente
+* Atualizar todos os nós sobre novos eventos ou dados
+* Exemplo: “Novo arquivo disponível” ou “Atualização de índice”
+
+**Como poderia funcionar:**
+
+1. O nó emissor cria uma mensagem e a assina com sua chave privada.
+2. A mensagem é enviada para todos os peers conhecidos.
+3. Cada peer recebe, verifica a assinatura e propaga a mensagem para seus peers (opcional, para alcançar a rede inteira).
+
+**Benefícios:**
+
+* Redução da complexidade de envio para múltiplos peers
+* Mantém a rede sincronizada em tempo real
+
+---
+
+## 2. **Envio Direto (`Send`)**
+
+**Definição:**
+O send é o envio de mensagem **para um nó específico**, diferente do broadcast.
+
+**Objetivo:**
+
+* Comunicação ponto-a-ponto
+* Permitir comandos ou dados privados
+* Exemplo: “Solicitação de arquivo” ou “Mensagem direta entre agentes”
+
+**Como poderia funcionar:**
+
+1. O nó emissor identifica o peer alvo (pelo Node ID ou endereço).
+2. Estabelece handshake seguro (TLS/RSA) se ainda não houver conexão.
+3. Envia a mensagem assinada criptograficamente.
+4. O peer receptor valida a assinatura e processa a mensagem.
+
+**Benefícios:**
+
+* Segurança e autenticação garantida
+* Controle sobre quem recebe a mensagem
+
+---
+
+## 3. **Recepção de Mensagens (Handler)**
+
+Para que broadcast e send funcionem de forma confiável, **cada nó precisa de um handler** que trate mensagens recebidas:
+
+* Diferenciar **mensagens de broadcast** e **mensagens diretas**
+* Verificar integridade e assinatura da mensagem
+* Evitar loops no broadcast (registrando IDs de mensagens recebidas)
+* Encaminhar mensagens válidas para o aplicativo ou para outros peers
+
+---
+
+## 4. **Peer List Dinâmica**
+
+Atualmente, seu projeto já compartilha peer lists, mas ainda é **repetitivo**. Uma melhoria seria:
+
+* Atualização automática da lista de peers ativos
+* Remover peers inativos após timeout
+* Integrar com broadcast para propagar novas entradas de peer
+* Usar peer list para enviar mensagens diretas ou otimizar broadcasts
+
+---
+
+## 5. **Segurança e Identidade**
+
+**Estado atual:**
+
+* Chaves RSA e certificados TLS persistentes
+* Node ID derivado da chave pública
+
+**Funcionalidade sugerida:**
+
+* Verificação de assinatura em todas as mensagens recebidas
+* Sistema de reputação opcional por Node ID
+* Bloqueio de nós suspeitos ou desconhecidos
+* Permitir que o broadcast só propague mensagens de nós confiáveis
+
+---
+
+## 6. **Resumo de Funcionalidades a Implementar**
+
+| Funcionalidade  | Tipo de Comunicação | Segurança              | Propagação                   |
+| --------------- | ------------------- | ---------------------- | ---------------------------- |
+| Broadcast       | Todos os nós        | Assinatura/verificação | Pode propagar recursivamente |
+| Send            | Nó específico       | Assinatura/verificação | Somente o destino            |
+| Peer List       | Todos os nós        | TLS                    | Atualização periódica        |
+| Handler         | Interno             | Assinatura/verificação | Encaminha para app ou peers  |
+| Segurança extra | Todos os tipos      | Reputação / whitelist  | Bloqueio de nós suspeitos    |
+
+---
+
+## 7. **Próximos Passos de Implementação**
+
+1. Criar módulo `MessageHandler` para tratar envio e recebimento
+2. Adicionar funções `broadcast(message)` e `send(peer_id, message)`
+3. Integrar validação de assinatura e propagação controlada
+4. Melhorar peer list para auto atualização e remoção de peers offline
+5. Adicionar logs detalhados para depuração de mensagens
+
+---

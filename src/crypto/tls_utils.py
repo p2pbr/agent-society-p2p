@@ -26,10 +26,13 @@ from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
+from ipaddress import ip_address as ip_addr
 
 def generate_self_signed_cert(
-    cert_dir: Path, node_id: str,
-    private_key_pem: bytes
+    cert_dir: Path,
+    node_id: str,
+    private_key_pem: bytes,
+    ip_address: str,
 ) -> tuple[Path, Path]:
     """
     Gera um par de chave privada e certificado TLS autoassinado para um nó específico.
@@ -39,6 +42,7 @@ def generate_self_signed_cert(
         cert_dir (Path): O diretório onde os arquivos de chave e certificado serão salvos.
         node_id (str): O ID do nó, usado como Common Name (CN) no certificado.
         private_key_pem (bytes): A chave privada do nó em formato PEM (bytes), usada para assinar o certificado.
+        ip_address (str): O endereço IP do nó.
 
     Returns:
         tuple[Path, Path]: Uma tupla contendo os caminhos para o arquivo de chave privada
@@ -68,6 +72,20 @@ def generate_self_signed_cert(
         x509.NameAttribute(NameOID.ORGANIZATION_NAME, u"SkyNet P2P"),
         x509.NameAttribute(NameOID.COMMON_NAME, node_id), # Common Name é o NodeID
     ])
+
+    # Adicionar o endereço IP e localhost às SANs
+    san_entries = [
+        x509.DNSName(node_id),
+        x509.DNSName("localhost"),
+    ]
+    try:
+        # Adicionar o endereço IP como uma SAN
+        from ipaddress import ip_address as ip_addr
+        san_entries.append(x509.IPAddress(ip_addr(ip_address)))
+    except ValueError:
+        # Se não for um endereço IP válido, trata como um nome de DNS
+        san_entries.append(x509.DNSName(ip_address))
+
     cert = (
         x509.CertificateBuilder()
         .subject_name(subject)
@@ -76,7 +94,7 @@ def generate_self_signed_cert(
         .serial_number(x509.random_serial_number())
         .not_valid_before(datetime.datetime.now(datetime.timezone.utc))
         .not_valid_after(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=365)) # Válido por 1 ano
-        .add_extension(x509.SubjectAlternativeName([x509.DNSName(node_id), x509.DNSName(u"localhost")]), critical=False,)
+        .add_extension(x509.SubjectAlternativeName(san_entries), critical=False)
         .add_extension(x509.KeyUsage(digital_signature=True, key_encipherment=True, data_encipherment=True,
                                      content_commitment=False, key_agreement=False, crl_sign=False,
                                      encipher_only=False, decipher_only=False, key_cert_sign=False), critical=True,)
@@ -121,42 +139,20 @@ def create_ssl_context(
     # Carrega a própria chave e certificado do nó
     context.load_cert_chain(certfile=cert_path, keyfile=key_path)
 
+    # Para testes e ambiente P2P com certificados autoassinados e autenticação em nível de aplicação,
+    # desabilitamos a verificação de certificado TLS para evitar problemas de confiança inicial.
+    # A autenticação real do peer é realizada pelo handshake de desafio-resposta.
+    context.check_hostname = False # Desabilitar hostname check para certificados autoassinados
+    context.verify_mode = ssl.CERT_NONE # Não tenta validar o certificado do peer no nível TLS
+    
+    # Se peer_certs_dir for fornecido, ainda carregamos os certificados, mas apenas
+    # para que possam ser usados na lógica da aplicação (ex: para verificar assinaturas
+    # de mensagens, mas não para validação inicial de conexão TLS).
     if peer_certs_dir:
-        # Configurar para autenticação mútua (mTLS) se peer_certs_dir for fornecido.
-        # Isso significa que o servidor/cliente vai *exigir* um certificado do peer.
-        context.verify_mode = ssl.CERT_REQUIRED
-        
-        # Carregar todos os certificados de peers conhecidos como CAs para validação.
-        # Em um sistema P2P, os nós confiam nos certificados uns dos outros.
-        ca_certs_found = False
         for cert_file in peer_certs_dir.glob("*.crt"):
             try:
-                # Adiciona o certificado de cada peer como uma "CA" que confiamos
                 context.load_verify_locations(str(cert_file))
-                ca_certs_found = True
             except ssl.SSLError as e:
                 logging.error(f"Erro ao carregar CA cert {cert_file}: {e}")
-        
-        if not ca_certs_found and is_server:
-            # Nota: Em um ambiente P2P real com certificados autoassinados,
-            # o servidor precisaria confiar explicitamente nos certificados de cada cliente.
-            # Aqui, para o MVP, se não há certificados de peers conhecidos,
-            # a verificação ainda exigirá um certificado do cliente (CERT_REQUIRED),
-            # mas o cliente precisaria ter seu cert na lista de "verify_locations" do servidor.
-            # A validação real da identidade P2P é feita no handshake de desafio-resposta,
-            # complementando a segurança TLS.
-            pass # A verificação de CERT_REQUIRED ainda será feita, mas confiará apenas em certs carregados
-
-    else: # Sem um diretório de certificados de peers fornecido
-        if is_server:
-            # Servidor: não exige certificado de cliente por padrão no primeiro nível TLS.
-            # A autenticação do cliente será feita pelo handshake de desafio-resposta da aplicação.
-            context.verify_mode = ssl.CERT_OPTIONAL # Permite clientes sem certificado
-        else:
-            # Cliente: tenta verificar o certificado do servidor.
-            # Para certificados autoassinados, o cliente pode não ter o CA raiz do servidor.
-            context.check_hostname = False # Desabilitar hostname check para certificados autoassinados, pois o CN é o NodeID
-            context.verify_mode = ssl.CERT_NONE # Não tenta validar o certificado do servidor contra uma CA, pois é autoassinado.
-                                            # A autenticação do servidor é feita pelo handshake P2P.
 
     return context
