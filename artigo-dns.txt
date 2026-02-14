@@ -1,0 +1,120 @@
+
+# Construindo um Sistema DNS em Redes P2P: Conceitos e Estrutura
+
+As redes peer-to-peer (P2P) são conhecidas por permitir comunicação direta entre nós, sem depender de servidores centrais. No contexto dessas redes, surge a necessidade de um **sistema de resolução de nomes distribuído**, ou seja, um DNS próprio dentro da rede. Este artigo aborda conceitos fundamentais e estratégias para implementar um DNS em um projeto P2P.
+
+---
+
+## 1. Introdução ao DNS em Redes P2P
+
+O **DNS tradicional** é um sistema centralizado que traduz nomes de domínio em endereços IP. Em redes P2P, a dinâmica muda: não existe um servidor central. Cada nó participa da rede, podendo registrar e resolver nomes de forma distribuída.
+
+Criar um DNS P2P permite:
+
+* Resolver nomes de nós sem depender da internet.
+* Construir um sistema modular e resiliente a falhas.
+* Integrar a resolução de nomes diretamente ao protocolo de comunicação P2P já existente.
+
+---
+
+## 2. Tipos de DNS P2P
+
+Existem duas abordagens principais para implementar DNS em redes P2P:
+
+### 2.1 Authoritative P2P DNS
+
+No **Authoritative P2P DNS**, cada nó responde **apenas pelos nomes que ele conhece**. É a forma mais simples de DNS P2P, pois não envolve resolução recursiva.
+
+**Características:**
+
+* Simples de implementar.
+* Cada nó mantém uma tabela local de nomes e endereços IP.
+* Consultas são respondidas diretamente se o nome estiver na tabela do nó.
+* Se o nó não conhecer o nome, ele pode retornar erro ou encaminhar para outros nós, dependendo da implementação.
+
+**Exemplo de tabela local:**
+
+```python
+tabela_dns = {
+    "node1.p2p": "192.168.0.2",
+    "node2.p2p": "192.168.0.3"
+}
+```
+
+**Vantagens:**
+
+* Baixa complexidade.
+* Ideal para protótipos e redes pequenas.
+* Sem necessidade de algoritmos complexos de busca distribuída.
+
+**Limitações:**
+
+* Não resolve nomes que não estão no nó consultado, a menos que haja um mecanismo de propagação.
+
+---
+
+### 2.2 Recursive P2P DNS
+
+No **Recursive P2P DNS**, um nó que **não conhece o nome solicitado** envia consultas para outros nós da rede até encontrar o endereço correspondente. Esse modelo é mais parecido com o DNS tradicional da internet.
+
+**Características:**
+
+* Consulta recursiva: se o nó não tem a resposta, pergunta aos vizinhos.
+* Pode envolver múltiplos saltos até encontrar o nó responsável pelo nome.
+* Permite cobertura completa de nomes na rede, mesmo em redes grandes.
+
+**Vantagens:**
+
+* Mais flexível e escalável.
+* Sem necessidade de todos os nós armazenarem todas as informações de nomes.
+
+**Desafios:**
+
+* Maior complexidade de implementação.
+* Necessidade de mecanismos de cache para reduzir latência.
+* Potenciais loops ou congestionamento de consultas se não houver controle adequado.
+
+---
+
+## 3. Estrutura Básica de um DNS P2P
+
+Para implementar um DNS em uma rede P2P, podemos definir a seguinte estrutura básica:
+
+1. **Tabela de nomes local**: cada nó mantém um mapeamento `nome ↔ IP`.
+2. **Consulta de nomes**: função que verifica se o nome existe na tabela local.
+3. **Propagação de consultas (opcional)**: se o nó não conhece o nome, encaminha a consulta a outros nós.
+4. **Cache de respostas**: armazena resultados recentes para acelerar futuras consultas.
+5. **TTL (Time To Live)**: define a validade das respostas em cache, garantindo atualizações consistentes.
+
+**Exemplo de função de consulta em pseudo-código:**
+
+```python
+def consultar_nome(nome):
+    if nome in tabela_dns:
+        return tabela_dns[nome]
+    else:
+        return None  # ou encaminhar para outro nó
+```
+
+---
+
+## 4. Considerações de Implementação
+
+* **Prototipagem rápida**: inicialmente, usar um Authoritative P2P DNS simples em cada nó permite testar a resolução de nomes sem criar sistemas complexos.
+* **Separação de código**: você pode implementar o DNS no mesmo repositório do projeto P2P para facilitar integração, ou em um módulo separado para maior modularidade.
+* **Escalabilidade**: quando a rede crescer, considerar técnicas como **Distributed Hash Tables (DHT)** para distribuir nomes entre os nós de forma eficiente.
+* **Segurança**: mesmo em redes P2P, é importante validar nomes e proteger contra spoofing ou respostas maliciosas.
+
+---
+
+## 5. Conclusão
+
+Implementar um DNS próprio em redes P2P é totalmente possível e oferece vantagens significativas em termos de autonomia e modularidade da rede.
+
+* **Authoritative P2P DNS** é ideal para redes pequenas e protótipos, com resolução direta baseada em tabelas locais.
+* **Recursive P2P DNS** permite resolver nomes em redes maiores, mas requer estratégias de propagação e cache eficientes.
+
+A combinação dessas abordagens e a integração com a infraestrutura P2P existente permite construir um sistema de resolução de nomes distribuído, eficiente e escalável.
+
+---
+

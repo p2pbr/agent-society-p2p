@@ -1,0 +1,104 @@
+
+# Análise de Requisitos: DNS para Rede P2P
+
+## **1. Visão Geral do Sistema**
+
+O objetivo é implementar um **serviço de resolução de nomes distribuído** dentro de uma rede P2P existente. O sistema permitirá que nós da rede registrem, consultem e resolvam nomes de outros nós de forma eficiente e segura, sem depender de servidores centrais.
+
+O DNS P2P será capaz de operar em dois modos:
+
+* **Authoritative P2P DNS**: cada nó responde apenas pelos nomes que possui.
+* **Recursive P2P DNS**: nós encaminham consultas para outros nós caso não conheçam a resolução.
+
+---
+
+## **2. Requisitos Funcionais (RF)**
+
+### **2.1 Registro de Nomes**
+
+* **RF01**: O sistema deve permitir que um nó registre um nome próprio associado ao seu endereço na rede.
+* **RF02**: O sistema deve validar a unicidade do nome dentro do escopo conhecido pelo nó ou pela rede (dependendo da implementação).
+* **RF03**: O sistema deve permitir atualizar o endereço associado a um nome registrado.
+
+### **2.2 Resolução de Nomes**
+
+* **RF04**: O sistema deve resolver consultas de nomes locais (Authoritative P2P DNS).
+* **RF05**: O sistema deve encaminhar consultas desconhecidas para outros nós (Recursive P2P DNS).
+* **RF06**: O sistema deve responder consultas com o endereço IP correspondente ao nome solicitado.
+* **RF07**: O sistema deve retornar uma resposta de “nome não encontrado” se nenhum nó conhecer o nome.
+
+### **2.3 Cache de Respostas**
+
+* **RF08**: O sistema deve manter um cache de consultas resolvidas para reduzir o tráfego na rede.
+* **RF09**: Cada entrada de cache deve ter um TTL configurável.
+* **RF10**: O sistema deve invalidar entradas expiradas automaticamente.
+
+### **2.4 Propagação e Descoberta**
+
+* **RF11**: O sistema deve permitir a propagação opcional de registros de nomes para nós vizinhos.
+* **RF12**: O sistema deve implementar um mecanismo de descoberta de nós ativos na rede para encaminhamento de consultas.
+
+### **2.5 Integração com a Rede P2P**
+
+* **RF13**: O sistema deve usar a camada de comunicação já implementada na rede P2P.
+* **RF14**: O sistema deve permitir registrar e consultar nomes de forma assíncrona, sem bloquear a comunicação entre nós.
+
+---
+
+## **3. Requisitos Não Funcionais (RNF)**
+
+### **3.1 Desempenho**
+
+* **RNF01**: O tempo médio de resolução de nomes deve ser inferior a X ms para consultas locais.
+* **RNF02**: O encaminhamento de consultas recursivas deve minimizar o número de saltos desnecessários.
+
+### **3.2 Escalabilidade**
+
+* **RNF03**: O sistema deve suportar crescimento da rede sem degradação significativa de performance.
+* **RNF04**: O cache deve ser dimensionável para suportar centenas ou milhares de entradas.
+
+### **3.3 Confiabilidade**
+
+* **RNF05**: O sistema deve continuar funcionando mesmo que alguns nós fiquem offline.
+* **RNF06**: O sistema deve evitar loops em consultas recursivas.
+
+### **3.4 Segurança**
+
+* **RNF07**: O sistema deve validar que as respostas recebidas de outros nós são consistentes.
+* **RNF08**: O sistema deve proteger contra registros falsos ou maliciosos (spoofing).
+
+### **3.5 Portabilidade e Modularidade**
+
+* **RNF09**: O módulo DNS deve ser facilmente integrado ou separado do repositório principal da rede P2P.
+* **RNF10**: O sistema deve ser implementável em linguagens compatíveis com o projeto P2P (Python, Go, etc.).
+
+---
+
+## **4. Restrições**
+
+* **C01**: O sistema deve usar apenas a infraestrutura já existente da rede P2P, sem depender de servidores externos.
+* **C02**: A comunicação deve ocorrer em canais seguros ou autenticados, caso necessário.
+* **C03**: A resolução de nomes deve ser compatível com endereços IPv4/IPv6 da rede P2P.
+* **C04**: O sistema deve ser implementável em nós com recursos limitados (CPU, memória).
+
+---
+
+## **5. Componentes Principais do Sistema**
+
+1. **Tabela de Nomes Local** – Armazena `nome ↔ endereço` do nó.
+2. **Módulo de Consulta** – Processa consultas de nomes e decide se resolve localmente ou encaminha.
+3. **Módulo Recursivo** – Encaminha consultas para outros nós e agrega respostas.
+4. **Cache de Respostas** – Mantém resultados recentes para melhorar desempenho.
+5. **Mecanismo de Descoberta de Nós** – Identifica nós ativos na rede para encaminhamento.
+6. **API de Registro** – Permite que o nó registre, atualize e exclua nomes próprios.
+
+---
+
+## **6. Futuras Extensões**
+
+* Implementação de **Distributed Hash Table (DHT)** para distribuir nomes automaticamente entre nós.
+* Suporte a **DNSSEC-like** para validação de respostas e maior segurança.
+* Interface gráfica ou CLI para monitoramento e administração do DNS P2P.
+
+---
+
